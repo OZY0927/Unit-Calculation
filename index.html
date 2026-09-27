@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GW Residence Unit Calculation & Carpark Mapper</title>
-    <!-- Include PDF.js for client-side PDF parsing -->
+    <title>GW Residence Unit Calculation & AI Carpark Mapper</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -18,7 +17,7 @@
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
         .form-group { display: flex; flex-direction: column; gap: 6px; position: relative; }
         .form-group label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
-        .form-group input[type="text"], .form-group input[type="number"] { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s; background: #fff; width: 100%; }
+        .form-group input[type="text"], .form-group input[type="password"], .form-group input[type="number"] { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s; background: #fff; width: 100%; }
         .form-group input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
         .file-input { padding: 8px 10px; border: 1px dashed #94a3b8; border-radius: 10px; font-size: 13px; background: #f8fafc; cursor: pointer; width: 100%; }
         
@@ -30,7 +29,6 @@
         .search-box input { padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; width: 100%; }
         .dropdown-item { padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.15s; }
         .dropdown-item:hover { background: #f1f5f9; }
-        .dropdown-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #4f46e5; cursor: pointer; }
         .dropdown-actions { display: flex; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
         .action-link { color: #4f46e5; font-weight: 600; cursor: pointer; text-decoration: none; }
         
@@ -46,6 +44,7 @@
         .status-success { background: #dcfce7; color: #166534; }
         .status-error { background: #fee2e2; color: #991b1b; }
         .status-warning { background: #fef08a; color: #854d0e; }
+        .status-ai { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
 
         .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .card { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
@@ -59,7 +58,7 @@
         .metric-row span:last-child { font-weight: 600; color: #1e293b; text-align: right; }
         .highlight-row { background: #ecfccb; padding: 6px 10px; border-radius: 8px; font-weight: 700; color: #3f6212; }
         .indigo-row { background: #e0e7ff; padding: 6px 10px; border-radius: 8px; font-weight: 700; color: #3730a3; }
-        .pdf-verified { color: #059669; font-size: 10px; font-weight: 700; background: #d1fae5; padding: 2px 6px; border-radius: 4px; margin-left: 6px; display: inline-block; vertical-align: middle; }
+        .pdf-verified { color: #4f46e5; font-size: 10px; font-weight: 700; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; margin-left: 6px; display: inline-block; vertical-align: middle; border: 1px solid #c7d2fe; }
 
         .table-container { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; }
         .table-header { padding: 18px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
@@ -69,7 +68,6 @@
         th { background: #f8fafc; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
         td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; white-space: nowrap; }
         tr:hover td { background: #f8fafc; }
-        .table-highlight { background: #ecfccb40; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -77,25 +75,30 @@
         <!-- Control Panel -->
         <div class="panel">
             <div class="panel-header">
-                <h1>GW Residence Tool with Auto-PDF Carpark Parsing</h1>
-                <p>Upload the Carpark Allocation PDF to auto-map specific lots. Fetch live units from Google Sheets.</p>
+                <h1>GW Residence Tool with AI Carpark Mapping</h1>
+                <p>Upload the Carpark Allocation PDF, and AI will automatically read and map the lots to your Google Sheet data.</p>
             </div>
 
             <div class="form-grid">
-                <!-- 1. Google Sheet Link -->
+                <!-- Google Sheet URL -->
                 <div class="form-group" style="grid-column: span 1;">
                     <label>Google Sheet URL</label>
                     <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/..." value="https://docs.google.com/spreadsheets/d/1von1etGASF01P2fxKwm0Bcb0Vb2ptjXWbIEFN9u61bA/edit#gid=122850993">
                 </div>
 
-                <!-- 2. PDF Upload -->
+                <!-- Gemini API Key -->
+                <div class="form-group" style="grid-column: span 1;">
+                    <label>Gemini API Key (For AI PDF Parsing)</label>
+                    <input type="password" id="geminiApiKey" placeholder="AIzaSy...">
+                </div>
+
+                <!-- PDF Upload -->
                 <div class="form-group" style="grid-column: span 1;">
                     <label>Upload Carpark Allocation PDF</label>
                     <input type="file" id="pdfUpload" class="file-input" accept=".pdf">
-                    <span style="font-size: 10px; color: #64748b; margin-top: 2px;">Extracts L2, B1, B2 lot numbers and maps them.</span>
                 </div>
 
-                <!-- 3. Unit Dropdown -->
+                <!-- Unit Dropdown -->
                 <div class="form-group" style="grid-column: span 1;">
                     <label>Select Units (<span id="availCount">0</span> Found)</label>
                     <div class="dropdown-wrapper">
@@ -152,12 +155,10 @@
         // Setup PDF.js Worker
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        // Internal Databases
         let parsedPdfDatabase = {}; 
         let fetchedAvailableUnits = [];
         let selectedUnitNumbers = new Set(["31-06", "34-03", "23-06", "33-10"]);
 
-        // Fallback Database
         const fallbackUnits = [
             { unitNo: "31-06", size: 1252, facing: "Hill View", locker: "1", spa: 887059, nettPrice: 754000 },
             { unitNo: "34-03", size: 1252, facing: "Airport View", locker: "N\\A", spa: 870589, nettPrice: 740000 },
@@ -166,16 +167,23 @@
         ];
 
         // -------------------------
-        // 1. PDF PROCESSING LOGIC
+        // 1. AI PDF PROCESSING LOGIC
         // -------------------------
         document.getElementById('pdfUpload').addEventListener('change', async function(e) {
             const file = e.target.files[0];
+            const apiKey = document.getElementById('geminiApiKey').value.trim();
+
             if (!file || file.type !== 'application/pdf') {
                 showStatus('Please upload a valid PDF file.', 'error');
                 return;
             }
 
-            showStatus('Parsing Carpark PDF...', 'warning');
+            if (!apiKey) {
+                showStatus('Please enter a Gemini API Key to use the AI Reader.', 'error');
+                return;
+            }
+
+            showStatus('Extracting text from PDF...', 'warning');
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
@@ -187,42 +195,59 @@
                     fullText += content.items.map(item => item.str).join(' ') + ' ';
                 }
                 
-                extractCarparksFromText(fullText);
-                showStatus('PDF Processed & Carparks Mapped Successfully!', 'success');
+                showStatus('Analyzing PDF structure with AI...', 'status-ai');
+                await processTextWithAI(fullText, apiKey);
                 
-                // Re-apply to existing units and re-render
-                fetchedAvailableUnits = fetchedAvailableUnits.map(u => applyPdfCarpark(u));
-                renderView();
-
             } catch (err) {
                 console.error(err);
-                showStatus('Failed to parse PDF. The file may be secured or empty.', 'error');
+                showStatus('Failed to parse PDF.', 'error');
             }
         });
 
-        // Heuristic Parsing for GW Residence PDF
-        function extractCarparksFromText(text) {
-            parsedPdfDatabase = {}; // Reset
+        async function processTextWithAI(text, apiKey) {
+            const prompt = `
+                You are a data extraction assistant. I am providing you with raw text extracted from a property Carpark Allocation PDF.
+                Your task is to identify the unit numbers (e.g., "31-06") and their assigned carpark levels and lot numbers (e.g., "Basement 1, Lot 25 & 26").
+                Assume "L" means Level, "B" means Basement.
+                Return the result EXCLUSIVELY as a valid JSON object. Do not include markdown formatting like \`\`\`json.
+                The JSON keys should be the unit numbers. The values should be an object with two keys: "carpark" (string, e.g., "2 Single") and "carparkDetails" (string, e.g., "Basement 1, Lot 25 & 26").
+                
+                Raw Text:
+                ${text.substring(0, 10000)}
+            `;
 
-            // Regex looks for patterns like: L2-7,34 & 35, B1-50 & 61, B2-1 & 2
-            const lotRegex = /(L[2-6]|B[1-2]|B-)(\d+)(?:\s*[,&]\s*(\d+))?(?:\s*&\s*(\d+))?/gi;
-            let match;
-            
-            // To simulate mapping without building a complex grid parser in pure JS,
-            // we'll populate the specific units we know match from the document structure,
-            // or dynamically assign found lots to standard unit suffixes.
-            
-            // Note: A true grid parser requires bounding box logic. We use heuristic mapping 
-            // for the uploaded PDF context here.
-            parsedPdfDatabase["31-06"] = { carpark: "2 Single", carparkDetails: "Basement 1, Lot 25 & 26", verified: true };
-            parsedPdfDatabase["34-03"] = { carpark: "2 Single", carparkDetails: "Basement 1, Lot 66 & 67", verified: true };
-            parsedPdfDatabase["23-06"] = { carpark: "2 Single", carparkDetails: "Level 3, Lot 48 & 49", verified: true };
-            parsedPdfDatabase["33-10"] = { carpark: "1 Tandem & 2 Single", carparkDetails: "Level 2, Lot 8, 44 & 45", verified: true };
-            
-            // You can extend this loop to map extracted regex matches to unit arrays based on level rows.
-            while ((match = lotRegex.exec(text)) !== null) {
-                // Background processing: extract found lots and log them.
-                // console.log(`Found Lot: ${match[0]}`); 
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.1 }
+                    })
+                });
+
+                if (!response.ok) throw new Error('API Request Failed');
+                
+                const data = await response.json();
+                let aiResponseText = data.candidates[0].content.parts[0].text.trim();
+                
+                // Clean markdown if present
+                if (aiResponseText.startsWith('```json')) {
+                    aiResponseText = aiResponseText.replace(/^```json\n/, '').replace(/\n```$/, '');
+                }
+
+                parsedPdfDatabase = JSON.parse(aiResponseText);
+                
+                // Mark all extracted as verified
+                Object.keys(parsedPdfDatabase).forEach(k => parsedPdfDatabase[k].verified = true);
+                
+                showStatus('AI successfully mapped the carparks!', 'success');
+                fetchedAvailableUnits = fetchedAvailableUnits.map(u => applyPdfCarpark(u));
+                renderView();
+
+            } catch (error) {
+                console.error("AI Parsing Error:", error);
+                showStatus('AI Parsing failed. Check API key and console for details.', 'error');
             }
         }
 
@@ -234,9 +259,8 @@
             return { ...unit, carpark: unit.carpark || "-", carparkDetails: unit.carparkDetails || "-", pdfVerified: false };
         }
 
-
         // -------------------------
-        // 2. FINANCIAL CALCULATORS
+        // 2. FINANCIAL CALCULATORS & SHEET PARSING (Unchanged)
         // -------------------------
         function formatCurrency(val) { return isNaN(val) ? "0" : Math.round(val).toLocaleString('en-US'); }
 
@@ -256,10 +280,6 @@
             return Math.round((principal * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1));
         }
 
-
-        // -------------------------
-        // 3. GOOGLE SHEETS PARSING
-        // -------------------------
         function parseCSV(text) {
             const lines = text.split(/\r\n|\n/);
             const result = [];
@@ -288,7 +308,6 @@
                     if (unitPattern.test(cellVal)) {
                         const unitNo = cellVal;
                         let price = 0, isSold = false;
-
                         for (let offset of [1, -1, 2]) {
                             if (matrix[r + offset] && matrix[r + offset][c]) {
                                 const checkVal = matrix[r + offset][c].trim().toUpperCase();
@@ -297,23 +316,15 @@
                                 if (!isNaN(cleanNum) && cleanNum > 100000) { price = cleanNum; break; }
                             }
                         }
-
                         if (!isSold && price > 0) {
                             const is1430 = unitNo.endsWith("-10") || unitNo.endsWith("-01") || unitNo.endsWith("-05");
                             const size = is1430 ? 1430 : 1252;
-                            
-                            let baseUnit = {
-                                unitNo: unitNo,
-                                size: size,
-                                facing: "Hill View",
-                                carpark: size === 1430 ? "1 Tandem & 2 Single" : "2 Single",
-                                carparkDetails: "Processing...", // Will be overridden by PDF parsing
+                            units.push(applyPdfCarpark({
+                                unitNo: unitNo, size: size, facing: "Hill View",
+                                carpark: size === 1430 ? "1 Tandem & 2 Single" : "2 Single", carparkDetails: "Processing...",
                                 locker: (unitNo === "31-06" || size === 1430) ? "1" : "N\\A",
-                                spa: price,
-                                nettPrice: Math.round(price * (size === 1430 ? 840000/988238 : 754000/887059))
-                            };
-                            
-                            units.push(applyPdfCarpark(baseUnit));
+                                spa: price, nettPrice: Math.round(price * (size === 1430 ? 840000/988238 : 754000/887059))
+                            }));
                         }
                     }
                 }
@@ -329,7 +340,7 @@
             const matchGid = urlInput.match(/gid=([0-9]+)/);
             if (!matchId) return showStatus('Invalid Google Sheet URL format', 'error');
 
-            const csvUrl = `https://docs.google.com/spreadsheets/d/${matchId[1]}/gviz/tq?tqx=out:csv&gid=${matchGid ? matchGid[1] : '122850993'}`;
+            const csvUrl = `[https://docs.google.com/spreadsheets/d/$](https://docs.google.com/spreadsheets/d/$){matchId[1]}/gviz/tq?tqx=out:csv&gid=${matchGid ? matchGid[1] : '122850993'}`;
             showStatus('Fetching live units from Google Sheet...', 'warning');
 
             try {
@@ -337,14 +348,8 @@
                 if (!response.ok) throw new Error('Sheet access error');
                 const matrix = parseCSV(await response.text());
                 const extracted = extractAvailableUnitsFromMatrix(matrix);
-
-                if (extracted.length === 0) {
-                    showStatus('No unsold units detected. Using fallback data.', 'error');
-                    fetchedAvailableUnits = fallbackUnits.map(u => applyPdfCarpark(u));
-                } else {
-                    fetchedAvailableUnits = extracted;
-                    showStatus(`Found ${extracted.length} units from Sheet!`, 'success');
-                }
+                fetchedAvailableUnits = extracted.length === 0 ? fallbackUnits.map(u => applyPdfCarpark(u)) : extracted;
+                showStatus(extracted.length === 0 ? 'No unsold units detected. Using fallback data.' : `Found ${extracted.length} units from Sheet!`, extracted.length === 0 ? 'error' : 'success');
             } catch (err) {
                 showStatus('Could not access public Sheet. Using fallback data.', 'error');
                 fetchedAvailableUnits = fallbackUnits.map(u => applyPdfCarpark(u));
@@ -356,21 +361,19 @@
         }
 
         function loadSampleData() {
-            // Setup default parsed database simulating PDF upload
             parsedPdfDatabase["31-06"] = { carpark: "2 Single", carparkDetails: "Basement 1, Lot 25 & 26", verified: true };
             parsedPdfDatabase["34-03"] = { carpark: "2 Single", carparkDetails: "Basement 1, Lot 66 & 67", verified: true };
             parsedPdfDatabase["23-06"] = { carpark: "2 Single", carparkDetails: "Level 3, Lot 48 & 49", verified: true };
             parsedPdfDatabase["33-10"] = { carpark: "1 Tandem & 2 Single", carparkDetails: "Level 2, Lot 8, 44 & 45", verified: true };
-
             fetchedAvailableUnits = fallbackUnits.map(u => applyPdfCarpark(u));
             selectedUnitNumbers = new Set(["31-06", "34-03", "23-06", "33-10"]);
-            showStatus('Loaded default Sheet & PDF mapped data', 'success');
+            showStatus('Loaded default Sheet & AI mapped data', 'success');
             populateDropdown();
             renderView();
         }
 
         // -------------------------
-        // 4. UI & RENDERING
+        // 3. UI RENDERING
         // -------------------------
         function showStatus(text, type) {
             const el = document.getElementById('statusMsg');
@@ -385,7 +388,6 @@
             document.getElementById('availCount').innerText = fetchedAvailableUnits.length;
             const container = document.getElementById('dropdownItemsList');
             container.innerHTML = '';
-
             fetchedAvailableUnits.forEach(u => {
                 const item = document.createElement('div');
                 item.className = 'dropdown-item';
@@ -422,9 +424,7 @@
             btnText.innerText = selectedUnitNumbers.size === 0 ? "Select Units..." : `${selectedUnitNumbers.size} Unit(s) Selected`;
         }
 
-        window.addEventListener('click', e => {
-            if (!e.target.closest('.dropdown-wrapper')) document.getElementById('dropdownMenu').classList.remove('show');
-        });
+        window.addEventListener('click', e => { if (!e.target.closest('.dropdown-wrapper')) document.getElementById('dropdownMenu').classList.remove('show'); });
 
         function renderView() {
             const loanPercent = parseFloat(document.getElementById('paramLoanPercent').value) || 85;
@@ -439,7 +439,6 @@
 
             selectedUnits.forEach((u, idx) => {
                 const loanAmount = Math.round(u.nettPrice * (loanPercent / 100));
-                
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -450,7 +449,7 @@
                     </div>
                     <div class="metrics-list">
                         <div class="metric-row"><span>Carpark</span><span>${u.carpark}</span></div>
-                        <div class="metric-row"><span>Lot No</span><span style="font-size:11px;">${u.carparkDetails} ${u.pdfVerified ? '<span class="pdf-verified">PDF Mapped</span>' : ''}</span></div>
+                        <div class="metric-row"><span>Lot No</span><span style="font-size:11px;">${u.carparkDetails} ${u.pdfVerified ? '<span class="pdf-verified">AI Mapped</span>' : ''}</span></div>
                         <div class="metric-row"><span>Locker</span><span>${u.locker}</span></div>
                         <div class="metric-row"><span>SPA Price</span><span>RM ${formatCurrency(u.spa)}</span></div>
                         <div class="metric-row highlight-row"><span>Nett Price</span><span>RM ${formatCurrency(u.nettPrice)}</span></div>
@@ -474,7 +473,7 @@
             const rowsDef = [
                 { label: 'Size', fn: u => `${u.size} sqft` },
                 { label: 'Carpark', fn: u => u.carpark },
-                { label: 'Carpark Level & Lot No', fn: u => u.carparkDetails + (u.pdfVerified ? ' <span class="pdf-verified">PDF</span>' : '') },
+                { label: 'Carpark Level & Lot No', fn: u => u.carparkDetails + (u.pdfVerified ? ' <span class="pdf-verified">AI</span>' : '') },
                 { label: 'Locker', fn: u => u.locker },
                 { label: 'SPA Price (RM)', fn: u => formatCurrency(u.spa) },
                 { label: 'Nett Price (RM)', fn: u => formatCurrency(u.nettPrice), highlight: true },
